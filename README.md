@@ -14,7 +14,7 @@ A.mov
 B.mov
 ```
 
-first you need to compute QC logs of both files
+first you need to compute QC logs of both files ```https://mediaarea.net/QCTools```
 
 ```
 qcli -i A.mov -o A.xml.gz
@@ -25,7 +25,7 @@ then you can compare gzipped files direcly like this
 
 
 ```
-compareQC -a QCOutputFile1.xml.gz -b QCFile2.xml.gz -t 5.0
+compareQC -a A.xml.gz -b B.xml.gz -t 5.0
 ```
 
 Values of -t (threshold should not be larger than 20 to give some meaningful results) 

@@ -124,11 +124,13 @@ int main(int argc, char** argv) {
 
     if(a.size()>b.size()){
       std::cerr << "Error: input file A should be shorter than B file" << std::endl;
-  return 1;
+      return 1;
     }
 
     for(int i = 0 ; i < b.size()-a.size();i++){
+      
       float avg = 0;
+      
       for(int ii = 0 ; ii < a.size();ii++){
         avg = avg + (fabs(b[ii+i]-a[ii]));
       }
