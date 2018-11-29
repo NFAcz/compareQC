@@ -123,8 +123,8 @@ int main(int argc, char** argv) {
     std::cout << "comparing..." << std::endl;
 
     if(a.size()>b.size()){
-      std::cout << "Error: input file A should be shorter than B file";
-      return 1;
+      std::cerr << "Error: input file A should be shorter than B file" << std::endl;
+  return 1;
     }
 
     for(int i = 0 ; i < b.size()-a.size();i++){
