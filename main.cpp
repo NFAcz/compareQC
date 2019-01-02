@@ -59,14 +59,17 @@ std::vector<std::string> split(const std::string& s, char delimiter)
   std::vector<std::string> tokens;
   std::string token;
   std::istringstream tokenStream(s);
+
   while (std::getline(tokenStream, token, delimiter))
   {
     tokens.push_back(token);
   }
+
   return tokens;
 }
 
 std::vector<float> load(const char *filename){
+
   std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
   boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
   inbuf.push(boost::iostreams::gzip_decompressor());
@@ -102,6 +105,7 @@ int main(int argc, char** argv) {
   char * thresh = getCmdOption(argv, argv + argc, "-t");
 
   float THRESHOLD = 15;
+  int JUMP = 4;
   int something = 0;
 
   if(thresh){
@@ -128,21 +132,22 @@ int main(int argc, char** argv) {
     }
 
     for(int i = 0 ; i < b.size()-a.size();i++){
-      
+
       float avg = 0;
-      
-      for(int ii = 0 ; ii < a.size();ii++){
+
+      for(int ii = 0 ; ii < a.size();ii+=JUMP){
         avg = avg + (fabs(b[ii+i]-a[ii]));
       }
 
       if(avg==0.0){
         something = 1;
         std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @ frame " << i << std::endl; 
+        return 0;
       }
 
-      if(avg<(THRESHOLD*a.size())){
+      if(avg<(THRESHOLD*a.size()/((float)JUMP))){
         something = 1;
-        std::cout << "close match rated: " << (avg/(a.size()+0.0)) << " @ frame " << i << std::endl; 
+        std::cout << "close match rated: " << (avg/(a.size()/((float)JUMP))) << " @ frame " << i << std::endl; 
       }
     }
 
@@ -153,7 +158,9 @@ int main(int argc, char** argv) {
 
   if(something==0){
     std::cout << "no match found" << std::endl;
+    return 1;
   }
+
   return 0;
 
 }
