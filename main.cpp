@@ -35,6 +35,8 @@ using namespace std;
 using namespace boost;
 
 
+float FPS = -1;
+
 char* getCmdOption(char ** begin, char ** end, const std::string & option)
 {
   char ** itr = std::find(begin, end, option);
@@ -85,6 +87,7 @@ std::vector<float> load(const char *filename, const int jump){
   int counter = 0;
 
   while(std::getline(instream, line)) {
+
     if(is_match(line,"lavfi.signalstats.YAVG")){
       if(counter%jump==0){
         std::vector<string> ttmp = split(line,'\"');
@@ -93,11 +96,24 @@ std::vector<float> load(const char *filename, const int jump){
       }
       counter++;
     }
+
+    if(is_match(line,"stream index=\"0")){
+      std::vector<string> ttmp = split(line,'\"');
+      std::vector<string> fracc = split(ttmp[41],'/');
+      float frac = float(strtof(fracc[0].c_str(),NULL)) / float(strtof(fracc[1].c_str(),NULL)) ;
+      if(FPS!=-1 && FPS!=frac){
+        std::cout << "warning source FPS differs!" << std::endl;
+      }
+      FPS = frac;
+
+    }
   }
   file.close();
 
   return tmp;
 }
+
+
 
 void help(string program){
   std::cerr << "Usage: " << program << " -a <gzipped QCTools xml input file A> " << "-b <gzipped QCTools xml input file B>" << std::endl << "[ opt -t <allowed THRESHOLD i.e. 5.0> -s <speedup - jump N samples> ]" << std::endl;
@@ -132,6 +148,7 @@ int main(int argc, char** argv) {
 
 
 
+
   if(thresh){
     std::string ts(thresh);
     THRESHOLD = float(strtof(ts.c_str(),NULL));
@@ -153,6 +170,7 @@ int main(int argc, char** argv) {
     std::vector<float> b = load(filename2,JUMP);
     std::cout << "loaded " << b.size() << " frames of total " << (JUMP * b.size()) << " (skip "<< JUMP <<")" << std::endl;
 
+    std::cout << "detected FPS: " << FPS << std::endl;
     std::cout << "comparing..." << std::endl;
 
     if(a.size()>b.size()){
@@ -165,22 +183,22 @@ int main(int argc, char** argv) {
 
 
 
-      if(frames>24){
+      if(frames >= FPS){
         frames= 0;
         seconds++;
       }
 
-      if(seconds>59){
+      if(seconds > 59){
         seconds = 0;
         minutes++;
       }
 
-      if(minutes>59){
+      if(minutes > 59){
         minutes = 0;
         hours++;
       }
 
-      
+
       stringstream tc;
       tc << setfill('0') << std::setw(2) << hours;
       tc << ":";
@@ -191,8 +209,13 @@ int main(int argc, char** argv) {
       tc << setfill('0') << std::setw(2) << frames;
       string TC = tc.str();
 
-      frames++;
-      
+
+      // weird placement but if match is perfect it needs to be broken here
+      if(something==2){
+        break;
+      }
+
+
       if(fabs(b[i]-a[0])<THRESHOLD){
 
         float avg = 0;
@@ -207,10 +230,8 @@ int main(int argc, char** argv) {
 
         if(avg==0.0){
           something = 2;
-          std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @:" << std::endl;
-          std::cout << "fr: " << index << std::endl;
-          std::cout << "TC: " << TCindex << std::endl;
-          return 0;
+          index = i * JUMP;
+          TCindex = TC;
         }
 
         if(avg < lowest){
@@ -218,7 +239,7 @@ int main(int argc, char** argv) {
           index = i * JUMP;
           TCindex = TC;
 
-          if(avg < THRESHOLD ){
+          if(avg < THRESHOLD && something !=2 ){
             something = 1;
             index = i * JUMP;
             TCindex = TC;
@@ -226,6 +247,9 @@ int main(int argc, char** argv) {
 
         }
       }
+
+      frames++;
+
     }
 
   }else{
@@ -233,19 +257,25 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  if(something==0){
+    std::cout << "NO luma match found whitin threshold of " << THRESHOLD << ", best match scores: " << lowest << std::endl;
+    std::cout << "fr: " << index << std::endl;
+    std::cout << "TC: " << TCindex << std::endl;
+    return 1;
+  }
+  
   if(something==1){
-    std::cout << "MATCH found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
+    std::cout << "close MATCH found whitin threshold of " << THRESHOLD << ", it scores: " << lowest << std::endl;
     std::cout << "fr: " << index << std::endl;
     std::cout << "TC: " << TCindex << std::endl;
   }
 
-  if(something==0){
-    std::cout << "NO luma match found whitin threshold of " << THRESHOLD << " best match scores: " << lowest << std::endl;
-    //std::cout << "fr: " << index << std::endl;
-    //std::cout << "TC: " << TCindex << std::endl;
-    return 1;
+  if(something==2){
+    std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @:" << std::endl;
+    std::cout << "fr: " << index << std::endl;
+    std::cout << "TC: " << TCindex << std::endl;
+    return 0;
   }
-
   return 0;
 
 }
