@@ -68,7 +68,7 @@ std::vector<std::string> split(const std::string& s, char delimiter)
   return tokens;
 }
 
-std::vector<float> load(const char *filename){
+std::vector<float> load(const char *filename, const int jump){
 
   std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
   boost::iostreams::filtering_streambuf<boost::iostreams::input> inbuf;
@@ -81,11 +81,16 @@ std::vector<float> load(const char *filename){
   std::string line;
   std::vector<float> tmp;
 
+  int counter = 0;
+
   while(std::getline(instream, line)) {
     if(is_match(line,"lavfi.signalstats.YAVG")){
+      if(counter%jump==0){
       std::vector<string> ttmp = split(line,'\"');
       Y = float(strtof(ttmp[3].c_str(),NULL));
       tmp.push_back(Y);
+      }
+      counter++;
     }
   }
   file.close();
@@ -93,36 +98,50 @@ std::vector<float> load(const char *filename){
   return tmp;
 }
 
+void help(string program){
+  std::cerr << "Usage: " << program << " -a <gzipped QCTools xml input file A> " << "-b <gzipped QCTools xml input file B>" << std::endl << "[ opt -t <allowed THRESHOLD i.e. 5.0> -s <speedup - jump N samples> ]" << std::endl;
+}
+
 int main(int argc, char** argv) {
 
   if(cmdOptionExists(argv, argv+argc, "-h"))
   {
-    std::cerr << "Usage: " << argv[0] << " -a <gzipped QCTools xml input file A> " << std::endl << "-b <gzipped QCTools xml input file B>" << std::endl << "-t <allowed THRESHOLD i.e. 5.0>" << std::endl;
+    help(argv[0]);
+    return 0;
   }
 
   char * filename1 = getCmdOption(argv, argv + argc, "-a");
   char * filename2 = getCmdOption(argv, argv + argc, "-b");
   char * thresh = getCmdOption(argv, argv + argc, "-t");
+  char * jump = getCmdOption(argv, argv + argc, "-s");
 
   float THRESHOLD = 15;
   int JUMP = 4;
   int something = 0;
+
+  float lowest = 1024.0;
+  float index = 0;
 
   if(thresh){
     std::string ts(thresh);
     THRESHOLD = float(strtof(ts.c_str(),NULL));
   }
 
+  if(jump){
+    std::string ts(jump);
+    JUMP = int(strtof(ts.c_str(),NULL));
+  }
+
 
   if (filename1 && filename2){
     std::cout << "loading file A: " << filename1 << std::endl;
-    std::vector<float> a = load(filename1);
-    std::cout << "loaded " << a.size() << " frames" << std::endl;
+    std::vector<float> a = load(filename1,JUMP);
+    std::cout << "loaded " << a.size() << " frames of total " << (JUMP * a.size()) << " (skip "<< JUMP <<")" << std::endl;
 
 
     std::cout << "loading file B: " << filename2 << std::endl;
-    std::vector<float> b = load(filename2);
-    std::cout << "loaded " << b.size() << " frames" << std::endl;
+    std::vector<float> b = load(filename2,JUMP);
+    std::cout << "loaded " << b.size() << " frames of total " << (JUMP * b.size()) << " (skip "<< JUMP <<")" << std::endl;
 
     std::cout << "comparing..." << std::endl;
 
@@ -131,36 +150,53 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-    for(int i = 0 ; i < b.size()-a.size();i++){
 
-      float avg = 0;
+    for(int i = 0 ; i < b.size() - a.size() ; i++){
 
-      for(int ii = 0 ; ii < a.size();ii+=JUMP){
-        avg = avg + (fabs(b[ii+i]-a[ii]));
-      }
 
-      if(avg==0.0){
-        something = 1;
-        std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @ frame " << i << std::endl; 
-        return 0;
-      }
+      if(fabs(b[i]-a[0])<THRESHOLD){
 
-      if(avg<(THRESHOLD*a.size()/((float)JUMP))){
-        something = 1;
-        std::cout << "close match rated: " << (avg/(a.size()/((float)JUMP))) << " @ frame " << i << std::endl; 
+        float avg = 0;
+
+
+        int cnt = 0;
+        for(int ii = 0 ; ii < a.size() ; ii++){
+          avg = avg + ( fabs( b[ii+i] - a[ii] ));
+          cnt++;
+        }
+        avg = avg / cnt;
+        
+        if(avg==0.0){
+          something = 2;
+          std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @ frame " << i << std::endl; 
+          return 0;
+        }
+
+        lowest = min(lowest,avg);
+        
+        if(avg< (THRESHOLD) ){
+          something = 1;
+          index = i;
+        }
       }
     }
 
   }else{
-    std::cerr << "Usage: " << argv[0] << " -a <gzipped QCTools xml input file A> " << std::endl << "-b <gzipped QCTools xml input file B>" << std::endl << "-t <allowed THRESHOLD i.e. 5.0>" << std::endl;
-    return 1;
+    help(argv[0]);
+    return 0;
+  }
+
+  if(something==1){
+    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " match scores: " << lowest << " @ frame " << index << std::endl;
   }
 
   if(something==0){
-    std::cout << "no match found" << std::endl;
+    std::cout << "no luma match found, closest average match scores: " << lowest << " @ frame " << std::endl;
+
     return 1;
   }
 
   return 0;
 
 }
+
