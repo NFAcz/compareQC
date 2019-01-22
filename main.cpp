@@ -23,6 +23,7 @@
 #include <boost/iostreams/copy.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
 #include <iostream>
+#include <iomanip>
 #include <string>
 #include <vector>
 #include <sstream>
@@ -86,9 +87,9 @@ std::vector<float> load(const char *filename, const int jump){
   while(std::getline(instream, line)) {
     if(is_match(line,"lavfi.signalstats.YAVG")){
       if(counter%jump==0){
-      std::vector<string> ttmp = split(line,'\"');
-      Y = float(strtof(ttmp[3].c_str(),NULL));
-      tmp.push_back(Y);
+        std::vector<string> ttmp = split(line,'\"');
+        Y = float(strtof(ttmp[3].c_str(),NULL));
+        tmp.push_back(Y);
       }
       counter++;
     }
@@ -116,11 +117,20 @@ int main(int argc, char** argv) {
   char * jump = getCmdOption(argv, argv + argc, "-s");
 
   float THRESHOLD = 15;
-  int JUMP = 4;
+  int JUMP = 1;
   int something = 0;
 
   float lowest = 1024.0;
   float index = 0;
+  string TCindex;
+
+  int hours = 0;
+  int minutes = 0;
+  int seconds = 0;
+  int frames = 0;
+
+
+
 
   if(thresh){
     std::string ts(thresh);
@@ -154,6 +164,35 @@ int main(int argc, char** argv) {
     for(int i = 0 ; i < b.size() - a.size() ; i++){
 
 
+
+      if(frames>24){
+        frames= 0;
+        seconds++;
+      }
+
+      if(seconds>59){
+        seconds = 0;
+        minutes++;
+      }
+
+      if(minutes>59){
+        minutes = 0;
+        hours++;
+      }
+
+      
+      stringstream tc;
+      tc << setfill('0') << std::setw(2) << hours;
+      tc << ":";
+      tc << setfill('0') << std::setw(2) << minutes;
+      tc << ":";
+      tc << setfill('0') << std::setw(2) << seconds;
+      tc << ":";
+      tc << setfill('0') << std::setw(2) << frames;
+      string TC = tc.str();
+
+      frames++;
+      
       if(fabs(b[i]-a[0])<THRESHOLD){
 
         float avg = 0;
@@ -165,18 +204,26 @@ int main(int argc, char** argv) {
           cnt++;
         }
         avg = avg / cnt;
-        
+
         if(avg==0.0){
           something = 2;
-          std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @ frame " << i << std::endl; 
+          std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @:" << std::endl;
+          std::cout << "fr: " << index << std::endl;
+          std::cout << "TC: " << TCindex << std::endl;
           return 0;
         }
 
-        lowest = min(lowest,avg);
-        
-        if(avg< (THRESHOLD) ){
-          something = 1;
-          index = i;
+        if(avg < lowest){
+          lowest = avg;
+          index = i * JUMP;
+          TCindex = TC;
+
+          if(avg < THRESHOLD ){
+            something = 1;
+            index = i * JUMP;
+            TCindex = TC;
+          }
+
         }
       }
     }
@@ -187,12 +234,15 @@ int main(int argc, char** argv) {
   }
 
   if(something==1){
-    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " match scores: " << lowest << " @ frame " << index << std::endl;
+    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
+    std::cout << "fr: " << index << std::endl;
+    std::cout << "TC: " << TCindex << std::endl;
   }
 
   if(something==0){
-    std::cout << "no luma match found, closest average match scores: " << lowest << " @ frame " << std::endl;
-
+    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
+    std::cout << "fr: " << index << std::endl;
+    std::cout << "TC: " << TCindex << std::endl;
     return 1;
   }
 
