@@ -234,15 +234,15 @@ int main(int argc, char** argv) {
   }
 
   if(something==1){
-    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
+    std::cout << "MATCH found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
     std::cout << "fr: " << index << std::endl;
     std::cout << "TC: " << TCindex << std::endl;
   }
 
   if(something==0){
-    std::cout << "average luma match found whitin threshold of " << THRESHOLD << " scores: " << lowest << std::endl;
-    std::cout << "fr: " << index << std::endl;
-    std::cout << "TC: " << TCindex << std::endl;
+    std::cout << "NO luma match found whitin threshold of " << THRESHOLD << " best match scores: " << lowest << std::endl;
+    //std::cout << "fr: " << index << std::endl;
+    //std::cout << "TC: " << TCindex << std::endl;
     return 1;
   }
 
