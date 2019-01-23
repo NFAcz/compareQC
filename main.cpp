@@ -34,9 +34,12 @@
 using namespace std;
 using namespace boost;
 
-
 float FPS = -1;
 
+
+/*
+ command line argument parser
+ */
 char* getCmdOption(char ** begin, char ** end, const std::string & option)
 {
   char ** itr = std::find(begin, end, option);
@@ -47,16 +50,26 @@ char* getCmdOption(char ** begin, char ** end, const std::string & option)
   return 0;
 }
 
+/*
+ command line argument check
+*/
 bool cmdOptionExists(char** begin, char** end, const std::string& option)
 {
   return std::find(begin, end, option) != end;
 }
 
+/*
+ string match routine (true if contains string)
+ */
 static bool is_match(const std::string& text, const std::string& pattern)
 {
   return std::string::npos != text.find(pattern);
 }
 
+
+/*
+  spltting string by delimiter
+ */
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
   std::vector<std::string> tokens;
@@ -71,6 +84,10 @@ std::vector<std::string> split(const std::string& s, char delimiter)
   return tokens;
 }
 
+
+/*
+  loading and parsing values into scalable vector array
+*/
 std::vector<float> load(const char *filename, const int jump){
 
   std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
@@ -113,12 +130,16 @@ std::vector<float> load(const char *filename, const int jump){
   return tmp;
 }
 
-
-
+/*
+ print help function
+*/
 void help(string program){
   std::cerr << "Usage: " << program << " -a <gzipped QCTools xml input file A> " << "-b <gzipped QCTools xml input file B>" << std::endl << "[ opt -t <allowed THRESHOLD i.e. 5.0> -s <speedup - jump N samples> ]" << std::endl;
 }
 
+/*
+ main loop goes here
+ */
 int main(int argc, char** argv) {
 
   if(cmdOptionExists(argv, argv+argc, "-h"))
@@ -145,21 +166,19 @@ int main(int argc, char** argv) {
   int seconds = 0;
   int frames = 0;
 
-
-
-
-
+  // parse -t
   if(thresh){
     std::string ts(thresh);
     THRESHOLD = float(strtof(ts.c_str(),NULL));
   }
 
+  //parse -s
   if(jump){
     std::string ts(jump);
     JUMP = int(strtof(ts.c_str(),NULL));
   }
 
-
+  //parse -a and -b (no file existance check so far)
   if (filename1 && filename2){
     std::cout << "loading file A: " << filename1 << std::endl;
     std::vector<float> a = load(filename1,JUMP);
@@ -178,11 +197,12 @@ int main(int argc, char** argv) {
       return 1;
     }
 
-
+    // sample comparation main loop
     for(int i = 0 ; i < b.size() - a.size() ; i++){
 
 
-
+      // timecode estimation 
+      //
       if(frames >= FPS){
         frames= 0;
         seconds++;
@@ -215,12 +235,12 @@ int main(int argc, char** argv) {
         break;
       }
 
-
+      // if the diff of first sample of B is whitin threshold do seek more samples
       if(fabs(b[i]-a[0])<THRESHOLD){
 
         float avg = 0;
 
-
+        // compute average diffenrence
         int cnt = 0;
         for(int ii = 0 ; ii < a.size() ; ii++){
           avg = avg + ( fabs( b[ii+i] - a[ii] ));
@@ -228,24 +248,29 @@ int main(int argc, char** argv) {
         }
         avg = avg / cnt;
 
+        // this means perfect match
         if(avg==0.0){
           something = 2;
           index = i * JUMP;
           TCindex = TC;
         }
-
+        
+        // record if avg in range
+        if(avg < THRESHOLD && something !=2 ){
+           something = 1;
+           index = i * JUMP;
+           TCindex = TC;
+        }
+        
+        // collect the best fitting record
         if(avg < lowest){
           lowest = avg;
           index = i * JUMP;
           TCindex = TC;
-
-          if(avg < THRESHOLD && something !=2 ){
-            something = 1;
-            index = i * JUMP;
-            TCindex = TC;
-          }
-
         }
+          
+        
+
       }
 
       frames++;
