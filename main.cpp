@@ -116,7 +116,7 @@ std::vector<float> load(const char *filename, const int jump){
 
     if(is_match(line,"stream index=\"0")){
       std::vector<string> ttmp = split(line,'\"');
-      std::vector<string> fracc = split(ttmp[41],'/');
+      std::vector<string> fracc = split(ttmp[41],'/'); // some older versions the index is 39!
       float frac = float(strtof(fracc[0].c_str(),NULL)) / float(strtof(fracc[1].c_str(),NULL)) ;
       if(FPS!=-1 && FPS!=frac){
         std::cout << "warning source FPS differs!" << std::endl;
@@ -273,7 +273,7 @@ int main(int argc, char** argv) {
 
       }
 
-      frames++;
+      frames+=1;
 
     }
 
