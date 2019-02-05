@@ -31,15 +31,25 @@
 #include <boost/tokenizer.hpp>
 #include <math.h>
 
+
 using namespace std;
 using namespace boost;
 
 float FPS = -1;
 
 
+/* colors */
+
+const std::string red("\033[0;31m");
+const std::string green("\033[1;32m");
+const std::string yellow("\033[1;33m");
+const std::string cyan("\033[0;36m");
+const std::string magenta("\033[0;35m");
+const std::string reset("\033[0m");
+
 /*
- command line argument parser
- */
+   command line argument parser
+   */
 char* getCmdOption(char ** begin, char ** end, const std::string & option)
 {
   char ** itr = std::find(begin, end, option);
@@ -51,16 +61,16 @@ char* getCmdOption(char ** begin, char ** end, const std::string & option)
 }
 
 /*
- command line argument check
-*/
+   command line argument check
+   */
 bool cmdOptionExists(char** begin, char** end, const std::string& option)
 {
   return std::find(begin, end, option) != end;
 }
 
 /*
- string match routine (true if contains string)
- */
+   string match routine (true if contains string)
+   */
 static bool is_match(const std::string& text, const std::string& pattern)
 {
   return std::string::npos != text.find(pattern);
@@ -68,8 +78,8 @@ static bool is_match(const std::string& text, const std::string& pattern)
 
 
 /*
-  spltting string by delimiter
- */
+   spltting string by delimiter
+   */
 std::vector<std::string> split(const std::string& s, char delimiter)
 {
   std::vector<std::string> tokens;
@@ -85,9 +95,40 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 }
 
 
+
 /*
-  loading and parsing values into scalable vector array
-*/
+ * loading and parsing prepared uncopressed txt files
+ * formatted [faster]
+ * Y (float)
+ * U (float)
+ * V (float)
+ */
+std::vector<float> loadFromTxt(const char *filename, const int jump){
+
+    std:ifstream instream(filename);
+    float Y;
+    std::string line;
+    std::vector<float> tmp;
+    int counter = 0;
+
+    while(std::getline(instream, line)){
+      if(counter%3==0){
+        Y = float(strtof(line.c_str(),NULL));
+      tmp.push_back(Y);
+      }
+      counter++;
+    }
+    instream.close();
+
+    FPS = 25.0;
+
+    return tmp;
+}
+
+
+/*
+   loading and parsing values from gziiped source into scalable vector array
+   */
 std::vector<float> load(const char *filename, const int jump){
 
   std::ifstream file(filename, std::ios_base::in | std::ios_base::binary);
@@ -130,16 +171,17 @@ std::vector<float> load(const char *filename, const int jump){
   return tmp;
 }
 
+
 /*
- print help function
-*/
+   print help function
+   */
 void help(string program){
   std::cerr << "Usage: " << program << " -a <gzipped QCTools xml input file A> " << "-b <gzipped QCTools xml input file B>" << std::endl << "[ opt -t <allowed THRESHOLD i.e. 5.0> -s <speedup - jump N samples> ]" << std::endl;
 }
 
 /*
- main loop goes here
- */
+   main loop goes here
+   */
 int main(int argc, char** argv) {
 
   if(cmdOptionExists(argv, argv+argc, "-h"))
@@ -152,8 +194,9 @@ int main(int argc, char** argv) {
   char * filename2 = getCmdOption(argv, argv + argc, "-b");
   char * thresh = getCmdOption(argv, argv + argc, "-t");
   char * jump = getCmdOption(argv, argv + argc, "-s");
+  char * verbose = getCmdOption(argv, argv + argc, "-v");
 
-  float THRESHOLD = 15;
+  float THRESHOLD = 7.5;
   int JUMP = 1;
   int something = 0;
 
@@ -165,6 +208,12 @@ int main(int argc, char** argv) {
   int minutes = 0;
   int seconds = 0;
   int frames = 0;
+
+  bool DEBUG = false;
+
+  if(verbose){
+    DEBUG = true;
+  }
 
   // parse -t
   if(thresh){
@@ -180,20 +229,40 @@ int main(int argc, char** argv) {
 
   //parse -a and -b (no file existance check so far)
   if (filename1 && filename2){
-    std::cout << "loading file A: " << filename1 << std::endl;
-    std::vector<float> a = load(filename1,JUMP);
-    std::cout << "loaded " << a.size() << " frames of total " << (JUMP * a.size()) << " (skip "<< JUMP <<")" << std::endl;
+    std::vector<float> a,b;
+    if(DEBUG)
+      std::cout << "loading file A: " << filename1 << std::endl;
+
+    if(is_match(filename1,".xml.gz")){
+      a = load(filename1,JUMP);
+    }else if(is_match(filename1,".txt")){
+      a = loadFromTxt(filename1,JUMP);
+    }
+
+    if(DEBUG)
+      std::cout << "loaded " << a.size() << " frames of total " << (JUMP * a.size()) << " (skip "<< JUMP <<")" << std::endl;
 
 
-    std::cout << "loading file B: " << filename2 << std::endl;
-    std::vector<float> b = load(filename2,JUMP);
-    std::cout << "loaded " << b.size() << " frames of total " << (JUMP * b.size()) << " (skip "<< JUMP <<")" << std::endl;
+    if(DEBUG)
+      std::cout << "loading file B: " << filename2 << std::endl;
 
-    std::cout << "detected FPS: " << FPS << std::endl;
-    std::cout << "comparing..." << std::endl;
+    if(is_match(filename2,".xml.gz")){
+      b = load(filename2,JUMP);
+    }else if(is_match(filename2,".txt")){
+      b = loadFromTxt(filename2,JUMP);
+    }
+
+    if(DEBUG)
+      std::cout << "loaded " << b.size() << " frames of total " << (JUMP * b.size()) << " (skip "<< JUMP <<")" << std::endl;
+
+    if(DEBUG)
+      std::cout << "detected FPS: " << FPS << std::endl;
+
+    if(DEBUG)
+      std::cout << "comparing..." << std::endl;
 
     if(a.size()>b.size()){
-      std::cerr << "Error: input file A should be shorter than B file" << std::endl;
+      std::cerr << yellow << "Note: input file A should be shorter than B file ("<<filename2<<")" << reset << std::endl;
       return 1;
     }
 
@@ -254,22 +323,22 @@ int main(int argc, char** argv) {
           index = i * JUMP;
           TCindex = TC;
         }
-        
+
         // record if avg in range
         if(avg < THRESHOLD && something !=2 ){
-           something = 1;
-           index = i * JUMP;
-           TCindex = TC;
+          something = 1;
+          index = i * JUMP;
+          TCindex = TC;
         }
-        
+
         // collect the best fitting record
         if(avg < lowest){
           lowest = avg;
           index = i * JUMP;
           TCindex = TC;
         }
-          
-        
+
+
 
       }
 
@@ -283,21 +352,22 @@ int main(int argc, char** argv) {
   }
 
   if(something==0){
-    std::cout << "NO luma match found whitin threshold of " << THRESHOLD << ", best match scores: " << lowest << std::endl;
-    std::cout << "fr: " << index << std::endl;
-    std::cout << "TC: " << TCindex << std::endl;
+    if(DEBUG)
+    std::cout << "NO match, threshold is " << THRESHOLD << ", best: " << yellow << lowest << reset << " ("<< filename2 << ")" << std::endl;
+    //std::cout << "FR: " << index << std::endl;
+    //std::cout << "TC: " << TCindex << std::endl;
     return 1;
   }
-  
+
   if(something==1){
-    std::cout << "close MATCH found whitin threshold of " << THRESHOLD << ", it scores: " << lowest << std::endl;
-    std::cout << "fr: " << index << std::endl;
+    std::cout << "close MATCH found whitin threshold of " << THRESHOLD << ", it scores: " << yellow << lowest << reset << std::endl;
+    std::cout << "FR: " << index << std::endl;
     std::cout << "TC: " << TCindex << std::endl;
   }
 
   if(something==2){
-    std::cout << "complete MATCH! file " << filename1 << " and " << filename2 << " are the same @:" << std::endl;
-    std::cout << "fr: " << index << std::endl;
+    std::cout << green << "complete MATCH!" << reset << " file " << filename1 << " and " << filename2 << " are the same @:" << std::endl;
+    std::cout << "FR: " << index << std::endl;
     std::cout << "TC: " << TCindex << std::endl;
     return 0;
   }
