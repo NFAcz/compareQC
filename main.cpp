@@ -110,11 +110,14 @@ std::vector<float> loadFromTxt(const char *filename, const int jump){
     std::string line;
     std::vector<float> tmp;
     int counter = 0;
-
+    int frms = 0;
     while(std::getline(instream, line)){
       if(counter%3==0){
+        if(frms%jump==0){
         Y = float(strtof(line.c_str(),NULL));
-      tmp.push_back(Y);
+        tmp.push_back(Y);
+        }
+        frms++;
       }
       counter++;
     }
@@ -270,10 +273,10 @@ int main(int argc, char** argv) {
     for(int i = 0 ; i < b.size() - a.size() ; i++){
 
 
-      // timecode estimation 
+      // timecode estimation
       //
-      if(frames >= FPS){
-        frames= 0;
+      if(frames * JUMP >= FPS){
+        frames = 0;
         seconds++;
       }
 
@@ -287,7 +290,6 @@ int main(int argc, char** argv) {
         hours++;
       }
 
-
       stringstream tc;
       tc << setfill('0') << std::setw(2) << hours;
       tc << ":";
@@ -297,6 +299,7 @@ int main(int argc, char** argv) {
       tc << ":";
       tc << setfill('0') << std::setw(2) << frames;
       string TC = tc.str();
+
 
 
       // weird placement but if match is perfect it needs to be broken here
@@ -311,6 +314,7 @@ int main(int argc, char** argv) {
 
         // compute average diffenrence
         int cnt = 0;
+
         for(int ii = 0 ; ii < a.size() ; ii++){
           avg = avg + ( fabs( b[ii+i] - a[ii] ));
           cnt++;
@@ -338,12 +342,9 @@ int main(int argc, char** argv) {
           TCindex = TC;
         }
 
-
-
       }
 
       frames+=1;
-
     }
 
   }else{
@@ -353,14 +354,15 @@ int main(int argc, char** argv) {
 
   if(something==0){
     if(DEBUG)
-    std::cout << "NO match, threshold is " << THRESHOLD << ", best: " << yellow << lowest << reset << " ("<< filename2 << ")" << std::endl;
+    std::cout << "NO match, threshold is " << THRESHOLD << ", best: " << yellow << lowest << reset << " (" << filename2 << ")" << std::endl;
     //std::cout << "FR: " << index << std::endl;
     //std::cout << "TC: " << TCindex << std::endl;
     return 1;
   }
 
   if(something==1){
-    std::cout << "close MATCH found whitin threshold of " << THRESHOLD << ", it scores: " << yellow << lowest << reset << std::endl;
+    std::cout << green << "close MATCH found" << reset << " whitin threshold of " << THRESHOLD << ", it scores: " << yellow << lowest << reset << std::endl;
+    std::cout << filename2 << std::endl;
     std::cout << "FR: " << index << std::endl;
     std::cout << "TC: " << TCindex << std::endl;
   }
@@ -374,4 +376,3 @@ int main(int argc, char** argv) {
   return 0;
 
 }
-
