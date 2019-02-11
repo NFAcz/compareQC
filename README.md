@@ -28,4 +28,4 @@ then you can compare gzipped files direcly like this
 compareQC -a A.xml.gz -b B.xml.gz -t 25.0
 ```
 
-Values of -t (threshold should not be larger than 50 to give some meaningful results, especially longer material will require larger threshold value) 
+value of -t threshold should not be larger than 50 to give some meaningful results (especially longer material will require larger threshold value) 
